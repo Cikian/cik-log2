@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>cn.cikian</groupId>
+    <artifactId>log</artifactId>
+    <version>1.2.11</version>
+    <name>cik-log</name>
+    <description>Logback 精美日志输出工具 - 支持 Spring Boot 和纯 Java 环境</description>
+
+    <developers>
+        <developer>
+            <id>cikian</id>
+            <name>Cikian Chen</name>
+            <email>cikian@cikian.com</email>
+            <url>https://www.cikian.cn</url>
+            <roles>
+                <role>Developer</role>
+            </roles>
+            <timezone>+8</timezone>
+        </developer>
+    </developers>
+
+    <properties>
+        <java.version>8</java.version>
+        <logback.version>1.2.11</logback.version>
+    </properties>
+
+    <dependencies>
+        <!-- logback核心依赖 -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+
+        <!-- slf4j API -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.36</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>UTF-8</encoding>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
+        <repository>
+            <id>cikian-private-repo</id>
+            <name>Cikian Release Repository</name>
+            <url>https://mvnrep.cikian.cn/repository/public/</url>
+        </repository>
+
+        <snapshotRepository>
+            <id>cikian-private-repo</id>
+            <name>Cikian Snapshot Repository</name>
+            <url>https://mvnrep.cikian.cn/repository/public/</url>
+        </snapshotRepository>
+    </distributionManagement>
+</project>
