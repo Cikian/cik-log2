@@ -3,32 +3,33 @@ package cn.cikian.logback.config;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.LayoutBase;
 
-import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 
 /**
  * HTML日志样式
  *
  * @author Cikian
- * @version 1.0
- * @implNote
+ * @version 1.1
+ * @implNote 优化高并发下的时间戳获取逻辑，支持异步日志；修复动态追加日志时的前端交互失效缺陷。
  * @see <a href="https://www.cikian.cn">https://www.cikian.cn</a>
- * @since 2026-05-15 01:36
+ * @since 2026-06-20 01:00
  */
 public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
-    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+
+    // 采用标准 DateTimeFormatter（线程安全）
+    private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
+            .withZone(ZoneId.systemDefault());
 
     @Override
     public String getFileHeader() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         return "<!DOCTYPE html>\n" +
                 "<html lang=\"zh-CN\">\n" +
                 "<head>\n" +
                 "<meta charset=\"UTF-8\">\n" +
                 "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
-                "<title>系统运行日志 " + sdf.format(new Date()) + "</title>\n" +
+                "<title>系统运行控制台日志</title>\n" +
                 "<style>\n" +
                 "  :root {\n" +
                 "    --bg-color: #f8fafc;\n" +
@@ -87,6 +88,8 @@ public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
                 "  }\n" +
                 "  tr {\n" +
                 "    transition: background-color 0.2s ease;\n" +
+                "    content-visibility: auto;\n" +
+                "    contain-intrinsic-size: 60px;\n" +
                 "  }\n" +
                 "  tr:hover {\n" +
                 "    background-color: #f8fafc !important;\n" +
@@ -99,12 +102,10 @@ public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
                 "  }\n" +
                 "  /* 列宽控制 */\n" +
                 "  .col-time { width: 180px; text-align: center; color: var(--text-muted); font-variant-numeric: tabular-nums; }\n" +
-                "  .col-level { width: 180px; text-align: center; }\n" +
-                "  .col-logger { width: 600px; color: #0d9488; font-weight: 500; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n" +
-                "  .col-logger-head { padding-left: 100px; }\n" +
-                "  .col-logger-content { padding-left: 16px; }\n" +
+                "  .col-level { width: 100px; text-align: center; }\n" +
+                "  .col-logger { width: 380px; text-align: center; color: #0d9488; font-weight: 500; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n" +
                 "  \n" +
-                "  /* 日志详情展开/收起相关样式 */\n" +
+                "  /* 日志详情展开/收起核心交互样式 */\n" +
                 "  .msg-container {\n" +
                 "    display: flex;\n" +
                 "    align-items: flex-start;\n" +
@@ -118,7 +119,8 @@ public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
                 "    overflow: hidden;\n" +
                 "    text-overflow: ellipsis;\n" +
                 "  }\n" +
-                "  .msg-content.expanded {\n" +
+                "  /* 当父级行被标记为展开状态时的表现 */\n" +
+                "  tr.expanded .msg-content {\n" +
                 "    white-space: pre-wrap;\n" +
                 "    word-wrap: break-word;\n" +
                 "  }\n" +
@@ -146,12 +148,13 @@ public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
                 "    border-radius: 6px;\n" +
                 "    text-align: center;\n" +
                 "    letter-spacing: 0.5px;\n" +
+                "    width: 55px;\n" +
                 "  }\n" +
                 "  .bg-trace { background-color: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }\n" +
                 "  .bg-debug { background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }\n" +
                 "  .bg-info { background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }\n" +
                 "  .bg-warn { background-color: #fffbeb; color: #d97706; border: 1px solid #fde68a; }\n" +
-                "  .bg-error { background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: bold; }\n" +
+                "  .bg-error { background-color: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }\n" +
                 "  /* 行级高亮微调 */\n" +
                 "  tr.WARN { background-color: #fffdf5; }\n" +
                 "  tr.ERROR { background-color: #fffafb; }\n" +
@@ -159,29 +162,20 @@ public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
                 "</head>\n" +
                 "<body>\n" +
                 "<script>\n" +
-                "  // 点击展开/收起逻辑\n" +
+                "  // 极致精简、且完全兼容流式追加节点的点击展开/收起逻辑\n" +
                 "  function toggleMsg(btn) {\n" +
-                "    var content = btn.previousElementSibling;\n" +
-                "    if (content.classList.contains('expanded')) {\n" +
-                "      content.classList.remove('expanded');\n" +
+                "    var row = btn.closest('tr');\n" +
+                "    if (row.classList.contains('expanded')) {\n" +
+                "      row.classList.remove('expanded');\n" +
                 "      btn.innerText = '展开';\n" +
                 "    } else {\n" +
-                "      content.classList.add('expanded');\n" +
+                "      row.classList.add('expanded');\n" +
                 "      btn.innerText = '收起';\n" +
                 "    }\n" +
                 "  }\n" +
-                "  // 初始化检查：如果内容没有超出单行，则隐藏“展开”按钮\n" +
-                "  document.addEventListener('DOMContentLoaded', function() {\n" +
-                "    var contents = document.querySelectorAll('.msg-content');\n" +
-                "    contents.forEach(function(content) {\n" +
-                "      if (content.scrollWidth <= content.clientWidth) {\n" +
-                "        content.nextElementSibling.style.display = 'none';\n" +
-                "      }\n" +
-                "    });\n" +
-                "  });\n" +
                 "</script>\n" +
                 "<div class=\"header-container\">\n" +
-                "  <h3>运行日志 " + sdf.format(new Date()) + "</h3>\n" +
+                "  <h3>系统控制台运行日志</h3>\n" +
                 "  <div class=\"subtitle\">Document: <a href=\"https://www.cikian.cn\" target=\"_blank\">Cikian</a></div>\n" +
                 "</div>\n" +
                 "<div class=\"table-container\">\n" +
@@ -190,7 +184,7 @@ public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
                 "      <tr>\n" +
                 "        <th class=\"col-time\">时间</th>\n" +
                 "        <th class=\"col-level\">级别</th>\n" +
-                "        <th class=\"col-logger col-logger-head\">执行类名</th>\n" +
+                "        <th class=\"col-logger\">执行类名</th>\n" +
                 "        <th class=\"col-msg\">日志详情</th>\n" +
                 "      </tr>\n" +
                 "    </thead>\n" +
@@ -203,11 +197,13 @@ public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
         String level = event.getLevel().toString();
         String levelLower = level.toLowerCase();
 
+        // 核心修改：使用事件固有的时间戳，完美承接异步 Appender，避免时钟阻塞和跨线程调度时间差错
+        String formattedTime = DATE_FORMAT.format(Instant.ofEpochMilli(event.getTimeStamp()));
+
         sb.append("<tr class=\"").append(level).append("\">")
-                .append("<td class=\"col-time\">").append(LocalDateTime.now().format(DATE_FORMAT)).append("</td>")
+                .append("<td class=\"col-time\">").append(formattedTime).append("</td>")
                 .append("<td class=\"col-level\"><span class=\"badge bg-").append(levelLower).append("\">").append(level).append("</span></td>")
-                .append("<td class=\"col-logger col-logger-content\" title=\"").append(event.getLoggerName()).append("\">").append(event.getLoggerName()).append("</td>")
-                // 将日志详情包裹在容器中，并增加展开按钮
+                .append("<td class=\"col-logger\" title=\"").append(event.getLoggerName()).append("\">").append(event.getLoggerName()).append("</td>")
                 .append("<td class=\"col-msg\">")
                 .append("<div class=\"msg-container\">")
                 .append("<div class=\"msg-content\">").append(escapeHtml(event.getFormattedMessage())).append("</div>")
@@ -232,9 +228,6 @@ public class LogbackCustomHtmlLayout extends LayoutBase<ILoggingEvent> {
         return "text/html";
     }
 
-    /**
-     * 简单的 HTML 转义工具，防止日志内容中包含尖括号等导致 HTML 结构坍塌
-     */
     private String escapeHtml(String input) {
         if (input == null) {
             return "";
