@@ -4,10 +4,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>cn.cikian</groupId>
-    <artifactId>log</artifactId>
+    <artifactId>log2</artifactId>
     <version>1.2.11</version>
-    <name>cik-log</name>
-    <description>Logback 精美日志输出工具 - 支持 Spring Boot 和纯 Java 环境</description>
+    <name>cik-log2</name>
+    <description>Logback 精美日志输出工具 - 支持 Spring Boot2 和纯 Java 环境</description>
 
     <developers>
         <developer>
@@ -79,13 +79,13 @@
 
     <distributionManagement>
         <repository>
-            <id>cikian-private-repo</id>
+            <id>CikianMaven</id>
             <name>Cikian Release Repository</name>
             <url>https://mvnrep.cikian.cn/repository/public/</url>
         </repository>
 
         <snapshotRepository>
-            <id>cikian-private-repo</id>
+            <id>CikianMaven</id>
             <name>Cikian Snapshot Repository</name>
             <url>https://mvnrep.cikian.cn/repository/public/</url>
         </snapshotRepository>

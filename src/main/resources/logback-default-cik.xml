@@ -8,7 +8,6 @@
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>${CONSOLE_PATTERN}</pattern>
-            <charset>UTF-8</charset>
         </encoder>
     </appender>
 
@@ -32,6 +31,7 @@
 
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
             <layout class="cn.cikian.logback.config.LogbackCustomHtmlLayout" />
+            <charset>UTF-8</charset>
         </encoder>
     </appender>
 
